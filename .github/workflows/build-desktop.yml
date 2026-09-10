@@ -3,22 +3,30 @@ name: Build desktop app
 on:
   workflow_dispatch: {}
 
+env:
+  PBS_TAG: "20260901"
+  PBS_VERSION: "3.12.14"
+
 jobs:
   build-mac:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install engine Python deps
+      # A venv bakes in an absolute path back to the build machine's Python
+      # install, which breaks the moment the app is copied elsewhere -- so we
+      # use a relocatable standalone Python build instead.
+      - name: Download a relocatable standalone Python
         run: |
-          python3 -m venv .venv
-          source .venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
+          curl -sL "https://github.com/astral-sh/python-build-standalone/releases/download/${PBS_TAG}/cpython-${PBS_VERSION}+${PBS_TAG}-aarch64-apple-darwin-install_only.tar.gz" -o pbs.tar.gz
+          tar -xzf pbs.tar.gz
+          mv python runtime
+          rm pbs.tar.gz
+
+      - name: Install engine Python deps into the standalone runtime
+        run: |
+          ./runtime/bin/python3.12 -m pip install --upgrade pip
+          ./runtime/bin/python3.12 -m pip install -r requirements.txt
 
       - uses: actions/setup-node@v4
         with:
@@ -41,16 +49,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install engine Python deps
+      - name: Download a relocatable standalone Python
         shell: pwsh
         run: |
-          python -m venv .venv
-          .venv\Scripts\pip install --upgrade pip
-          .venv\Scripts\pip install -r requirements.txt
+          curl.exe -sL "https://github.com/astral-sh/python-build-standalone/releases/download/$env:PBS_TAG/cpython-$env:PBS_VERSION+$env:PBS_TAG-x86_64-pc-windows-msvc-install_only.tar.gz" -o pbs.tar.gz
+          tar -xzf pbs.tar.gz
+          Rename-Item python runtime
+          Remove-Item pbs.tar.gz
+
+      - name: Install engine Python deps into the standalone runtime
+        shell: pwsh
+        run: |
+          .\runtime\python.exe -m pip install --upgrade pip
+          .\runtime\python.exe -m pip install -r requirements.txt
 
       - uses: actions/setup-node@v4
         with:

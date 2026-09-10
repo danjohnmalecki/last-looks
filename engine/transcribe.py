@@ -4,6 +4,9 @@ step in the pipeline, so it runs exactly once per video and the word list is han
 to every check that needs it, rather than each check re-transcribing independently.
 """
 import re
+import subprocess
+
+from . import binaries
 
 _MODEL_SIZE = "base"
 _model = None
@@ -17,8 +20,26 @@ def _get_model():
     return _model
 
 
+def _has_audio_stream(video_path: str) -> bool:
+    out = subprocess.run(
+        [
+            binaries.FFPROBE_BIN, "-v", "error", "-select_streams", "a",
+            "-show_entries", "stream=index", "-of", "csv=p=0", video_path,
+        ],
+        capture_output=True, text=True,
+    )
+    return bool(out.stdout.strip())
+
+
 def transcribe_words(video_path: str) -> list[dict]:
-    """Return a flat list of {start, end, word, probability} dicts for the whole video."""
+    """Return a flat list of {start, end, word, probability} dicts for the whole video.
+
+    Videos with no audio track (silent screen recordings, muted exports) would
+    otherwise crash faster-whisper's internal audio decoding -- skip cleanly instead.
+    """
+    if not _has_audio_stream(video_path):
+        return []
+
     model = _get_model()
     segments, _info = model.transcribe(video_path, word_timestamps=True)
 

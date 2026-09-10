@@ -6,18 +6,19 @@ const http = require("http");
 const PORT = 8793;
 
 // In dev, the last-looks project lives one directory up. Once packaged,
-// electron-builder copies engine/, app/, .venv/ and requirements.txt into
-// Resources/last-looks (see package.json "extraResources").
+// electron-builder copies engine/, app/, runtime/ and requirements.txt into
+// Resources/last-looks (see package.json "extraResources"). "runtime" is a
+// relocatable standalone Python build (python-build-standalone), NOT a venv
+// -- a venv bakes in an absolute path back to whatever machine built it,
+// which breaks the moment the app is copied anywhere else.
 const isPackaged = app.isPackaged;
 const lastLooksDir = isPackaged
   ? path.join(process.resourcesPath, "last-looks")
   : path.join(__dirname, "..");
 
-// venv layout differs by platform: Windows uses Scripts\python.exe, everyone
-// else uses bin/python3.
 const pythonBin = process.platform === "win32"
-  ? path.join(lastLooksDir, ".venv", "Scripts", "python.exe")
-  : path.join(lastLooksDir, ".venv", "bin", "python3");
+  ? path.join(lastLooksDir, "runtime", "python.exe")
+  : path.join(lastLooksDir, "runtime", "bin", "python3.12");
 
 let serverProcess = null;
 let mainWindow = null;

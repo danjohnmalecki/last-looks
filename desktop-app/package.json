@@ -29,8 +29,8 @@
         "to": "last-looks/app"
       },
       {
-        "from": "../.venv",
-        "to": "last-looks/.venv"
+        "from": "../runtime",
+        "to": "last-looks/runtime"
       },
       {
         "from": "../requirements.txt",

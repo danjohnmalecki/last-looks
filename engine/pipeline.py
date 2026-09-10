@@ -93,7 +93,12 @@ def analyze(video_path: str, thumbnail_dir: str, progress_cb=None) -> dict:
     advance()
 
     report()
-    words = transcribe.transcribe_words(video_path)
+    try:
+        words = transcribe.transcribe_words(video_path)
+    except Exception:
+        # A transcription failure (corrupt/unusual audio, model hiccup) shouldn't
+        # take down the whole analysis -- the other 6 checks are still useful.
+        words = []
     advance()
 
     report()
