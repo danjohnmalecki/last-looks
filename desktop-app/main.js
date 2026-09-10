@@ -30,6 +30,18 @@ function startServer() {
   const bundledBinDir = path.join(lastLooksDir, "bin");
   const env = { ...process.env };
   const exe = process.platform === "win32" ? ".exe" : "";
+
+  // Apps launched by double-click (not from a Terminal) get a minimal PATH on
+  // macOS -- it does NOT include Homebrew's /opt/homebrew/bin (Apple Silicon)
+  // or /usr/local/bin (Intel), even though a Terminal session would see them.
+  // That's exactly why `brew install ffmpeg` can work perfectly in Terminal
+  // and still fail with "No such file or directory: 'ffprobe'" when the app
+  // is opened normally. Prepend the common Homebrew locations so the bundled
+  // engine can find ffmpeg/ffprobe/tesseract regardless of launch method.
+  if (process.platform === "darwin") {
+    const extraPaths = ["/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin", "/usr/local/sbin"];
+    env.PATH = [...extraPaths, env.PATH || "/usr/bin:/bin:/usr/sbin:/sbin"].join(":");
+  }
   try {
     if (require("fs").existsSync(bundledBinDir)) {
       env.LAST_LOOKS_FFMPEG_BIN = path.join(bundledBinDir, `ffmpeg${exe}`);
