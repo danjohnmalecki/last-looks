@@ -13,16 +13,37 @@ const lastLooksDir = isPackaged
   ? path.join(process.resourcesPath, "last-looks")
   : path.join(__dirname, "..");
 
-const pythonBin = path.join(lastLooksDir, ".venv", "bin", "python3");
+// venv layout differs by platform: Windows uses Scripts\python.exe, everyone
+// else uses bin/python3.
+const pythonBin = process.platform === "win32"
+  ? path.join(lastLooksDir, ".venv", "Scripts", "python.exe")
+  : path.join(lastLooksDir, ".venv", "bin", "python3");
 
 let serverProcess = null;
 let mainWindow = null;
 
 function startServer() {
+  // If a "bin" folder of bundled ffmpeg/tesseract binaries ships alongside the
+  // app (see build-desktop.yml), point the engine at it. Otherwise the engine
+  // falls back to whatever's on PATH (e.g. Homebrew on Mac).
+  const bundledBinDir = path.join(lastLooksDir, "bin");
+  const env = { ...process.env };
+  const exe = process.platform === "win32" ? ".exe" : "";
+  try {
+    if (require("fs").existsSync(bundledBinDir)) {
+      env.LAST_LOOKS_FFMPEG_BIN = path.join(bundledBinDir, `ffmpeg${exe}`);
+      env.LAST_LOOKS_FFPROBE_BIN = path.join(bundledBinDir, `ffprobe${exe}`);
+      const tesseractBin = path.join(bundledBinDir, `tesseract${exe}`);
+      if (require("fs").existsSync(tesseractBin)) {
+        env.LAST_LOOKS_TESSERACT_BIN = tesseractBin;
+      }
+    }
+  } catch (_) { /* no bundled binaries -- fine, use PATH */ }
+
   serverProcess = spawn(
     pythonBin,
     ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(PORT)],
-    { cwd: lastLooksDir, stdio: "inherit" }
+    { cwd: lastLooksDir, stdio: "inherit", env }
   );
 
   serverProcess.on("error", (err) => {

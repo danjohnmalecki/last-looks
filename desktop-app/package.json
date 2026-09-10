@@ -6,7 +6,8 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "build:mac": "electron-builder --mac --dir"
+    "build:mac": "electron-builder --mac --dir",
+    "build:win": "electron-builder --win --dir"
   },
   "devDependencies": {
     "electron": "^33.0.0",
@@ -39,6 +40,9 @@
     "mac": {
       "target": "dir",
       "category": "public.app-category.video"
+    },
+    "win": {
+      "target": "dir"
     }
   }
 }

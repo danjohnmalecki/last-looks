@@ -21,7 +21,6 @@ const progressBar = document.getElementById("progressBar");
 const progressLabel = document.getElementById("progressLabel");
 const stageIcon = document.getElementById("stageIcon");
 const player = document.getElementById("player");
-const summaryEl = document.getElementById("summary");
 const findingsListEl = document.getElementById("findingsList");
 const markerTrack = document.getElementById("markerTrack");
 const landing = document.getElementById("landing");
@@ -169,14 +168,6 @@ function seekAndPause(timestamp) {
 function render(report) {
   landing.style.display = "none";
   workspace.style.display = "block";
-
-  summaryEl.innerHTML = "";
-  for (const [type, count] of Object.entries(report.summary)) {
-    const chip = document.createElement("div");
-    chip.className = "chip";
-    chip.textContent = `${LABELS[type] || type}: ${count}`;
-    summaryEl.appendChild(chip);
-  }
 
   findingsListEl.innerHTML = "";
   if (report.findings.length === 0) {
