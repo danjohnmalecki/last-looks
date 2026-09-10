@@ -34,6 +34,7 @@ jobs:
         with:
           name: last-looks-mac-arm64
           path: desktop-app/dist/mac-arm64/Last Looks.app
+          include-hidden-files: true
 
   build-win:
     runs-on: windows-latest
@@ -65,3 +66,4 @@ jobs:
         with:
           name: last-looks-windows
           path: desktop-app/dist/win-unpacked
+          include-hidden-files: true
