@@ -1,0 +1,44 @@
+{
+  "name": "last-looks-desktop",
+  "version": "1.0.0",
+  "description": "Last Looks — standalone desktop app",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac --dir"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.johnmalecki.lastlooks",
+    "productName": "Last Looks",
+    "files": [
+      "main.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../engine",
+        "to": "last-looks/engine"
+      },
+      {
+        "from": "../app",
+        "to": "last-looks/app"
+      },
+      {
+        "from": "../.venv",
+        "to": "last-looks/.venv"
+      },
+      {
+        "from": "../requirements.txt",
+        "to": "last-looks/requirements.txt"
+      }
+    ],
+    "mac": {
+      "target": "dir",
+      "category": "public.app-category.video"
+    }
+  }
+}

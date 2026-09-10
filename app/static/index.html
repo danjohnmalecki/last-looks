@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Last Looks</title>
+<style>
+  :root {
+    color-scheme: light;
+    /* SMPTE color bars -- Last Looks' brand palette */
+    --bar-white:  #c8c8c8;
+    --bar-yellow: #c8c810;
+    --bar-cyan:   #10c8c8;
+    --bar-green:  #10c810;
+    --bar-magenta:#c810c8;
+    --bar-red:    #c81010;
+    --bar-blue:   #1010c8;
+    --logo-h: 150px;
+
+    --bg: #ffffff;
+    --card: #f6f7f9;
+    --border: #e3e5ea;
+    --border-strong: #cfd2d9;
+    --text: #17181c;
+    --text-muted: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  html, body { max-width: 100%; overflow-x: hidden; height: 100%; }
+  body {
+    font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+
+  .rainbow-bars {
+    background: linear-gradient(
+      to right,
+      var(--bar-white) 0 14.28%, var(--bar-yellow) 14.28% 28.56%,
+      var(--bar-cyan) 28.56% 42.84%, var(--bar-green) 42.84% 57.12%,
+      var(--bar-magenta) 57.12% 71.4%, var(--bar-red) 71.4% 85.68%,
+      var(--bar-blue) 85.68% 100%
+    );
+  }
+  /* Soft multicolor glow for any SMPTE-bar element: a blurred clone of the same
+     gradient sitting behind it. */
+  .bar-glow { position: relative; }
+  .bar-glow::after {
+    content: ""; position: absolute; inset: -5px -2px; z-index: -1;
+    background: inherit; border-radius: inherit; filter: blur(10px); opacity: 0.75;
+  }
+
+  .bars {
+    height: 6px;
+  }
+
+  main {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 24px; width: 100%;
+  }
+
+  /* ---------- Landing screen ---------- */
+  #landing {
+    display: flex; flex-direction: column; align-items: center;
+    width: 580px; max-width: 100%;
+  }
+  .title-block {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; margin-bottom: 26px; cursor: pointer;
+  }
+  #logo { height: var(--logo-h); width: auto; }
+  .sub { color: var(--text-muted); font-size: 18px; margin-top: 16px; text-align: center; width: 100%; }
+  #drop {
+    border: 1px solid var(--border); border-radius: 16px; padding: 64px 28px;
+    text-align: center; color: var(--text-muted); cursor: pointer; font-size: 20px;
+    position: relative; overflow: visible; width: 100%; background: var(--card);
+    transition: border-color 0.2s ease, background 0.2s ease, padding 0.3s ease;
+  }
+  #drop::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 5px;
+    border-radius: 16px 16px 0 0;
+    background: linear-gradient(
+      to right,
+      var(--bar-white) 0 14.28%, var(--bar-yellow) 14.28% 28.56%,
+      var(--bar-cyan) 28.56% 42.84%, var(--bar-green) 42.84% 57.12%,
+      var(--bar-magenta) 57.12% 71.4%, var(--bar-red) 71.4% 85.68%,
+      var(--bar-blue) 85.68% 100%
+    );
+    box-shadow: 0 0 14px 2px rgba(200,40,200,0.35), 0 0 14px 2px rgba(16,200,200,0.35);
+    opacity: 0.6; transition: opacity 0.2s ease;
+  }
+  #drop.drag { border-color: #5b8def; color: var(--text); background: #eef3fd; }
+  #drop.drag::before { opacity: 1; }
+  #drop input { display: none; }
+  #drop.analyzing { cursor: default; padding: 40px 28px; }
+
+  #dropPrompt { transition: opacity 0.25s ease, transform 0.25s ease; }
+  #drop.analyzing #dropPrompt {
+    display: none; opacity: 0; transform: scale(0.96);
+  }
+
+  #progressWrap {
+    display: none; flex-direction: column; align-items: center; gap: 20px;
+    width: 100%; opacity: 0; transform: scale(0.97);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  #drop.analyzing #progressWrap { opacity: 1; transform: scale(1); }
+  #progressBody { width: 100%; }
+  #progressTrack { background: var(--border); border-radius: 9px; height: 18px; overflow: visible; }
+  #progressBar {
+    height: 100%; width: 0%; border-radius: 9px; transition: width 0.3s ease;
+  }
+  #progressLabel { color: var(--text-muted); font-size: 15px; margin-top: 10px; text-align: center; }
+
+  #stageIconWrap {
+    height: calc(var(--logo-h) * 0.55); display: flex; align-items: center; justify-content: center;
+    overflow: hidden; width: 100%;
+  }
+  #stageIcon {
+    height: 100%; width: auto; object-fit: contain; display: none;
+    opacity: 0; transform: translateX(-24px); filter: blur(10px);
+    transition: opacity 0.4s ease, transform 0.4s ease, filter 0.4s ease;
+  }
+  #stageIcon.visible { opacity: 1; transform: translateX(0); filter: blur(0); }
+  #stageIcon.leaving { opacity: 0; transform: translateX(24px); filter: blur(10px); transition-duration: 0.2s; }
+
+  #status { color: var(--text-muted); font-size: 16px; margin-top: 16px; }
+
+  /* ---------- Workspace screen (video + results) ---------- */
+  #workspace { display: none; width: 100%; max-width: 1800px; }
+  .workspace-header {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 20px; cursor: pointer;
+    width: fit-content;
+  }
+  .workspace-header img { height: 48px; width: auto; }
+  .workspace-row {
+    display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; justify-content: center;
+  }
+  #videoCol { flex: 3 1 680px; min-width: 340px; max-width: 1200px; }
+  .col-title {
+    font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-muted); margin-bottom: 10px;
+  }
+  video {
+    width: 100%; max-width: 100%; max-height: min(80vh, 950px);
+    border-radius: 12px; background: #000; display: block;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  #markerTrack {
+    position: relative; height: 16px; margin-top: 12px;
+    background: var(--border); border-radius: 8px; cursor: pointer;
+  }
+  .marker {
+    position: absolute; top: -3px; width: 6px; height: 22px; border-radius: 3px;
+    cursor: pointer; border: 1px solid rgba(0,0,0,0.25);
+    transform: translateX(-50%);
+  }
+  .marker.black_frame { background: #cbae1a; }
+  .marker.media_offline { background: #e0403f; }
+  .marker.slipped_frame { background: #1ba9ab; }
+  .marker.effect_error { background: #b526b5; }
+  .marker.subscribe_cta { background: #1f9e3e; }
+  .marker.curse_word { background: #e0663f; }
+  .marker.qr_code { background: #2b2b2b; }
+  .marker.sponsor_mention { background: #c9a227; }
+  .marker.giveaway { background: #2f8fd6; }
+  .marker.merch_plug { background: #6b4fbb; }
+
+  #resultsCol {
+    flex: 1 1 400px; min-width: 340px; max-width: 500px;
+    max-height: min(80vh, 950px); display: flex; flex-direction: column;
+  }
+  .summary { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; flex-shrink: 0; }
+  .chip {
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    padding: 7px 16px; font-size: 14px; white-space: nowrap;
+  }
+  .findings-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px 8px; flex-shrink: 0;
+  }
+  .findings-header span { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  #findingsList {
+    overflow-y: auto; flex: 1; min-height: 0; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg);
+  }
+  .finding-row {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer;
+    border-bottom: 1px solid var(--border);
+  }
+  .finding-row:last-child { border-bottom: none; }
+  .finding-row:hover { background: var(--card); }
+  .finding-row .thumb { width: 80px; height: 45px; object-fit: cover; border-radius: 6px; background: #000; flex-shrink: 0; }
+  .finding-meta { min-width: 0; flex: 1; }
+  .finding-time { color: var(--text); font-size: 14px; font-weight: 600; }
+  .finding-label { color: var(--text-muted); font-size: 13px; margin-top: 3px; }
+  .finding-url {
+    display: inline-block; margin-top: 4px; font-size: 13px; color: #2f6fdb;
+    text-decoration: underline; word-break: break-all;
+  }
+  .finding-url:hover { color: #1c4fb0; }
+  .finding-conf { color: var(--text-muted); font-size: 13px; flex-shrink: 0; text-align: right; }
+  .badge { padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+  .badge.black_frame { background: #fbf0d1; color: #8a6d0a; }
+  .badge.media_offline { background: #fce1e1; color: #b8231f; }
+  .badge.slipped_frame { background: #d9f2f2; color: #0d7577; }
+  .badge.effect_error { background: #f4dcf4; color: #8f1a8f; }
+  .badge.subscribe_cta { background: #dcf3e2; color: #146c2b; }
+  .badge.curse_word { background: #fbe3d6; color: #a5441c; }
+  .badge.qr_code { background: #e7e7e9; color: #2b2b2b; }
+  .badge.sponsor_mention { background: #faf1cf; color: #8a6d0a; }
+  .badge.giveaway { background: #dbeafc; color: #1f5fa8; }
+  .badge.merch_plug { background: #ece6fa; color: #4b3591; }
+  #emptyFindings { color: var(--text-muted); font-size: 15px; padding: 24px; text-align: center; }
+
+  @media (max-width: 900px) {
+    .workspace-row { flex-direction: column; align-items: stretch; }
+    #videoCol, #resultsCol { max-width: 100%; }
+    #resultsCol { max-height: 50vh; }
+  }
+</style>
+</head>
+<body>
+<div class="bars rainbow-bars bar-glow"></div>
+<main>
+
+  <div id="landing">
+    <div class="title-block" id="logoLanding">
+      <img id="logo" src="/logo.png" alt="Last Looks">
+    </div>
+    <div id="drop">
+      <div id="dropPrompt">Drop a video here or click to choose a file</div>
+      <input type="file" id="fileInput" accept="video/*">
+      <div id="progressWrap">
+        <div id="progressBody">
+          <div id="progressTrack"><div id="progressBar" class="rainbow-bars bar-glow"></div></div>
+          <div id="progressLabel"></div>
+        </div>
+        <div id="stageIconWrap"><img id="stageIcon" alt=""></div>
+      </div>
+    </div>
+    <div class="sub">Video QC pass — black frames, media offline, slipped/short-cut frames, effect errors, subscribe CTA, curse words, QR codes, sponsor/giveaway/merch mentions</div>
+    <div id="status"></div>
+  </div>
+
+  <div id="workspace">
+    <div class="workspace-header" id="logoWorkspace">
+      <img src="/logo.png" alt="Last Looks">
+    </div>
+    <div class="workspace-row">
+      <div id="videoCol">
+        <div class="col-title">Preview</div>
+        <video id="player" controls></video>
+        <div id="markerTrack"></div>
+      </div>
+      <div id="resultsCol">
+        <div class="col-title">Findings</div>
+        <div class="summary" id="summary"></div>
+        <div class="findings-header"><span>Finding</span><span>Confidence Level</span></div>
+        <div id="findingsList"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

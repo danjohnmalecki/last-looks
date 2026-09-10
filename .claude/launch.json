@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "last-looks",
+      "runtimeExecutable": "/Users/dan/Documents/AI Builds/last-looks/.venv/bin/uvicorn",
+      "runtimeArgs": ["app.main:app", "--host", "127.0.0.1", "--port", "8791"],
+      "port": 8791
+    }
+  ]
+}

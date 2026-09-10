@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+uploads/
+*.mp4
+*.mov
+.DS_Store
+desktop-app/node_modules/
+desktop-app/dist/
