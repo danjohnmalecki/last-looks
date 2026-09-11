@@ -7,3 +7,4 @@ uploads/
 .DS_Store
 desktop-app/node_modules/
 desktop-app/dist/
+runtime/

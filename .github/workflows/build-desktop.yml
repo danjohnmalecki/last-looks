@@ -19,9 +19,12 @@ jobs:
       - name: Download a relocatable standalone Python
         run: |
           curl -sL "https://github.com/astral-sh/python-build-standalone/releases/download/${PBS_TAG}/cpython-${PBS_VERSION}+${PBS_TAG}-aarch64-apple-darwin-install_only.tar.gz" -o pbs.tar.gz
+          rm -rf runtime python
           tar -xzf pbs.tar.gz
           mv python runtime
           rm pbs.tar.gz
+          # Fail loudly if this isn't the runtime we just downloaded
+          ./runtime/bin/python3.12 --version
 
       - name: Install engine Python deps into the standalone runtime
         run: |
@@ -76,9 +79,13 @@ jobs:
         shell: pwsh
         run: |
           curl.exe -sL "https://github.com/astral-sh/python-build-standalone/releases/download/$env:PBS_TAG/cpython-$env:PBS_VERSION+$env:PBS_TAG-x86_64-pc-windows-msvc-install_only.tar.gz" -o pbs.tar.gz
+          if (Test-Path runtime) { Remove-Item -Recurse -Force runtime }
+          if (Test-Path python) { Remove-Item -Recurse -Force python }
           tar -xzf pbs.tar.gz
           Rename-Item python runtime
           Remove-Item pbs.tar.gz
+          # Fail loudly if this isn't the runtime we just downloaded
+          .\runtime\python.exe --version
 
       - name: Install engine Python deps into the standalone runtime
         shell: pwsh
