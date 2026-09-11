@@ -22,8 +22,32 @@ const pythonBin = process.platform === "win32"
 
 let serverProcess = null;
 let mainWindow = null;
+let serverLog = "";
+
+// Downloading the app through a browser or Slack marks every file inside it
+// with com.apple.quarantine. Gatekeeper then silently refuses to exec the
+// nested Python binary -- the server never starts and the app just reports a
+// timeout, with no clue why. (Downloading via CLI doesn't set the flag, which
+// is exactly why this slipped through local testing.) The Electron binary
+// itself is already user-approved by this point, so it can clear the flag from
+// its own payload. Best-effort: if it fails, we carry on and let the real
+// error surface below.
+function clearQuarantine() {
+  if (process.platform !== "darwin") return;
+  try {
+    require("child_process").execFileSync(
+      "/usr/bin/xattr",
+      ["-dr", "com.apple.quarantine", lastLooksDir],
+      { timeout: 60000 }
+    );
+  } catch (err) {
+    console.error("Could not clear quarantine (continuing anyway):", err.message);
+  }
+}
 
 function startServer() {
+  clearQuarantine();
+
   // If a "bin" folder of bundled ffmpeg/tesseract binaries ships alongside the
   // app (see build-desktop.yml), point the engine at it. Otherwise the engine
   // falls back to whatever's on PATH (e.g. Homebrew on Mac).
@@ -56,15 +80,35 @@ function startServer() {
   serverProcess = spawn(
     pythonBin,
     ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(PORT)],
-    { cwd: lastLooksDir, stdio: "inherit", env }
+    { cwd: lastLooksDir, env }
   );
 
+  // Capture the server's output so a startup failure can show the ACTUAL cause
+  // on screen. A bare "did not start in time" tells the user (and whoever is
+  // debugging it remotely) nothing at all.
+  serverProcess.stdout.on("data", (d) => {
+    serverLog += d.toString();
+    process.stdout.write(d);
+  });
+  serverProcess.stderr.on("data", (d) => {
+    serverLog += d.toString();
+    process.stderr.write(d);
+  });
+
   serverProcess.on("error", (err) => {
+    serverLog += `\nFailed to launch Python: ${err.message}\n`;
     console.error("Failed to start Last Looks server:", err);
+  });
+  serverProcess.on("exit", (code, signal) => {
+    if (code !== 0) {
+      serverLog += `\nPython exited early (code ${code}, signal ${signal}).\n`;
+    }
   });
 }
 
-function waitForServer(retriesLeft = 60) {
+// 240 x 500ms = 2 minutes. A cold first launch on a slower machine has to load
+// a lot of native libraries; 30s was too tight to distinguish "slow" from "broken".
+function waitForServer(retriesLeft = 240) {
   return new Promise((resolve, reject) => {
     const tryOnce = (remaining) => {
       const req = http.get(`http://127.0.0.1:${PORT}/`, (res) => {
@@ -101,9 +145,31 @@ async function createWindow() {
     await waitForServer();
     mainWindow.loadURL(`http://127.0.0.1:${PORT}/`);
   } catch (err) {
+    // Surface the real diagnostics -- a screenshot of this screen should be
+    // enough to actually identify the problem without remote access.
+    const details = [
+      `Error: ${err.message}`,
+      `Platform: ${process.platform} ${process.arch}`,
+      `Python: ${pythonBin}`,
+      `Python found on disk: ${require("fs").existsSync(pythonBin)}`,
+      "",
+      "--- server output ---",
+      serverLog.trim() || "(no output -- the Python process produced nothing, " +
+        "which usually means the OS blocked it from running)",
+    ].join("\n");
+
     mainWindow.loadURL(
-      `data:text/html,<body style="font-family:-apple-system,sans-serif;padding:40px">` +
-        `<h2>Last Looks failed to start</h2><p>${err.message}</p></body>`
+      "data:text/html;charset=utf-8," +
+        encodeURIComponent(
+          `<body style="font-family:-apple-system,sans-serif;padding:40px;line-height:1.5">
+            <h2>Last Looks failed to start</h2>
+            <p>Please screenshot this whole window and send it over — the details below say why.</p>
+            <pre style="background:#f4f4f6;padding:16px;border-radius:8px;white-space:pre-wrap;
+                        word-break:break-word;font-size:12px;max-height:60vh;overflow:auto">${
+              details.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c])
+            }</pre>
+          </body>`
+        )
     );
   }
 }

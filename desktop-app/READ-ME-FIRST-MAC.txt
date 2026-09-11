@@ -1,0 +1,35 @@
+LAST LOOKS — Mac setup (2 minutes, one time)
+
+Because this app isn't signed with a paid Apple Developer certificate, macOS
+quarantines it when you download it and refuses to run it. One command fixes
+that permanently.
+
+STEP 1 — Install the two tools it needs (one time per machine)
+  Open Terminal (Cmd+Space, type "Terminal") and paste:
+
+      brew install ffmpeg tesseract
+
+  Don't have Homebrew? Install it first from https://brew.sh, then run the above.
+
+STEP 2 — Move "Last Looks.app" into your Applications folder.
+
+STEP 3 — Unblock the app. In Terminal, paste this exactly:
+
+      xattr -cr "/Applications/Last Looks.app"
+
+  (If you put it somewhere else, use that path instead.)
+
+STEP 4 — Open it normally. Done — you won't need to repeat any of this.
+
+
+TROUBLESHOOTING
+
+"Last Looks failed to start"
+  Step 3 wasn't run, or was run on the wrong path. Re-check the path matches
+  where the app actually is.
+
+"ffprobe not found" / errors while scanning a video
+  Step 1 didn't complete. Run it again and watch for errors.
+
+Still stuck? Screenshot the whole error window — it now includes the details
+needed to diagnose it.

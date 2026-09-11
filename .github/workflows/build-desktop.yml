@@ -51,7 +51,15 @@ jobs:
         run: |
           codesign --force --deep --sign - "Last Looks.app"
           codesign --verify --verbose=2 "Last Looks.app"
-          ditto -c -k --sequesterRsrc --keepParent "Last Looks.app" Last-Looks-Mac.zip
+          # Ship the setup instructions alongside the app: without a paid Apple
+          # Developer cert, macOS quarantines downloads and the user has to run
+          # `xattr -cr` once. Better that travels with the file than lives only
+          # in a Slack message someone scrolls past. ditto (not zip) is required
+          # so the .app's internal symlinks survive.
+          mkdir -p "Last Looks"
+          mv "Last Looks.app" "Last Looks/"
+          cp ../../READ-ME-FIRST-MAC.txt "Last Looks/"
+          ditto -c -k --sequesterRsrc --keepParent "Last Looks" Last-Looks-Mac.zip
 
       - uses: actions/upload-artifact@v4
         with:
