@@ -38,10 +38,25 @@ jobs:
           npm install
           npm run build:mac
 
+      # Ad-hoc sign so macOS doesn't report the app as "damaged" on download,
+      # then package with ditto. Both MUST happen here on the runner:
+      # actions/upload-artifact dereferences symlinks, which turns the .app's
+      # framework symlinks (Versions/Current, etc.) into duplicated real
+      # directories -- that breaks the bundle structure, breaks the signature,
+      # and makes Gatekeeper refuse to launch it. Zipping first keeps the
+      # symlinks intact inside the archive. `zip` is NOT a substitute here:
+      # ditto is the tool that preserves bundle structure correctly.
+      - name: Sign and package the app
+        working-directory: desktop-app/dist/mac-arm64
+        run: |
+          codesign --force --deep --sign - "Last Looks.app"
+          codesign --verify --verbose=2 "Last Looks.app"
+          ditto -c -k --sequesterRsrc --keepParent "Last Looks.app" Last-Looks-Mac.zip
+
       - uses: actions/upload-artifact@v4
         with:
           name: last-looks-mac-arm64
-          path: desktop-app/dist/mac-arm64/Last Looks.app
+          path: desktop-app/dist/mac-arm64/Last-Looks-Mac.zip
           include-hidden-files: true
 
   build-win:
@@ -73,8 +88,13 @@ jobs:
           npm install
           npm run build:win
 
+      - name: Package the app
+        shell: pwsh
+        working-directory: desktop-app/dist
+        run: Compress-Archive -Path win-unpacked\* -DestinationPath Last-Looks-Windows.zip
+
       - uses: actions/upload-artifact@v4
         with:
           name: last-looks-windows
-          path: desktop-app/dist/win-unpacked
+          path: desktop-app/dist/Last-Looks-Windows.zip
           include-hidden-files: true
